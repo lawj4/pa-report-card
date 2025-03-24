@@ -1,6 +1,46 @@
-function myFunction() {
-  createSheetsInFolder();
+function draftEmails() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  
+  // Get the subject from cell D2 and the body from cell D5
+  var subject = sheet.getRange("D2").getValue();
+  var emailBody = sheet.getRange("D5").getValue();
+  
+  // Loop through rows starting from row 2 (excluding the header)
+  var data = sheet.getRange("A2:B" + sheet.getLastRow()).getValues();
+  
+  // Loop through each row (each name and corresponding email addresses)
+  data.forEach(function(row) {
+    var name = row[0];  // Name in column A
+    var emailAddresses = row[1];  // Comma-separated emails in column B
+    
+    // Skip rows where column A or B is empty
+    if (!name || !emailAddresses) {
+      return;  // Skip to the next row if there's no name or emails
+    }
+
+    // Replace [name] (case-insensitive) in the subject and body with the actual name
+    var personalizedSubject = subject.replace(/\[name\]/gi, name);  // Replace [name] in subject
+    var personalizedBody = emailBody.replace(/\[name\]/gi, name);  // Replace [name] in body
+    
+    // Split the email addresses by commas and trim them to ensure no extra spaces
+    var emails = emailAddresses.split(",").map(function(email) {
+      return email.trim();
+    });
+    
+    // Only create one draft for each name, sending it to all emails
+    if (emails.length > 0) {
+      var uniqueEmails = Array.from(new Set(emails));  // Remove duplicates in case of duplicate email addresses
+      
+      // Create one draft with all unique email addresses for each name
+      GmailApp.createDraft(uniqueEmails.join(","), personalizedSubject, personalizedBody);
+    }
+  });
 }
+
+
+
+
+
 
 function createSheetsInFolder() {
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
