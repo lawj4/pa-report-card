@@ -5,6 +5,10 @@ function draftEmails() {
   var subject = sheet.getRange("D2").getValue();
   var emailBody = sheet.getRange("D5").getValue();
   
+  // Get the folder where the current spreadsheet is located
+  var currentFile = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
+  var parentFolder = currentFile.getParents().next();
+  
   // Loop through rows starting from row 2 (excluding the header)
   var data = sheet.getRange("A2:B" + sheet.getLastRow()).getValues();
   
@@ -22,6 +26,30 @@ function draftEmails() {
     var personalizedSubject = subject.replace(/\[name\]/gi, name);  // Replace [name] in subject
     var personalizedBody = emailBody.replace(/\[name\]/gi, name);  // Replace [name] in body
     
+    // Find the file in the folder that matches the name in column A
+    var files = parentFolder.getFilesByName(name);
+    var fileLink = '';
+    
+    // If the file with the matching name is found, get its URL and set it to view-only
+    if (files.hasNext()) {
+      var file = files.next();
+      
+      // Set the file to "view-only"
+      file.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW);
+      
+      // Get the URL of the file
+      fileLink = file.getUrl();
+      
+      // Create a clickable link with HTML format
+      var clickableLink = '<a href="' + fileLink + '" target="_blank">Link</a>';
+      
+      // Replace [link] with the clickable HTML link
+      personalizedBody = personalizedBody.replace(/\[link\]/gi, clickableLink);
+    } else {
+      // If no matching file is found, provide a default message
+      personalizedBody = personalizedBody.replace(/\[link\]/gi, 'No file found with the matching name.');
+    }
+
     // Split the email addresses by commas and trim them to ensure no extra spaces
     var emails = emailAddresses.split(",").map(function(email) {
       return email.trim();
@@ -32,11 +60,12 @@ function draftEmails() {
       var uniqueEmails = Array.from(new Set(emails));  // Remove duplicates in case of duplicate email addresses
       
       // Create one draft with all unique email addresses for each name
-      GmailApp.createDraft(uniqueEmails.join(","), personalizedSubject, personalizedBody);
+      GmailApp.createDraft(uniqueEmails.join(","), personalizedSubject, personalizedBody, {
+        htmlBody: personalizedBody  // Set the body as HTML to make the link clickable
+      });
     }
   });
 }
-
 
 
 
